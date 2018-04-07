@@ -4,8 +4,32 @@ import re
 import json
 import sqlite3
 
+connection = sqlite3.connect('enderecos.db')
+c = connection.cursor()
+
 data_dir = "/Users/mauricio.karas/PycharmProjects/coordinates/data_points"
 key = "AIzaSyBYMwq_MqG3aNIjbZvGU4-eBnDu7wD69Xo"
+
+
+# latitude	longitude	rua	numero	bairro	cidade	cep	estado	pais endereço
+def create_table():
+    c.execute(
+        """CREATE TABLE IF NOT EXISTS enderecos
+        (latitude TEXT, longitude TEXT, rua TEXT, numero TEXT, 
+        bairro TEXT, cidade TEXT, cep TEXT, estado TEXT, pais TEXT, endereco_completo TEXT)""")
+
+
+def sql_insert_address(lat, long, numero, rua, bairro, cidade, cep, estado, pais, endereco):
+    try:
+        sql = """UPDATE enderecos SET 
+        latitude = ?, longitude = ?, rua = ?, numero = ?, bairro = ?, cidade = ?, cep = ?,  estado = ?, pais = ?, 
+        endereco_completo = ?;""".format(lat, long, rua, numero, bairro, cidade, cep, estado, pais, endereco)
+
+        c.execute()
+        connection.commit()
+
+    except Exception as e:
+        print('Erro insert: ', str(e))
 
 
 def call_api(lat, long):
@@ -59,7 +83,10 @@ def get_coordinates(directory):
 
     return coordinates_list
 
+
 def main():
+
+    create_table()
 
     coordinates_list = get_coordinates(data_dir)
 
@@ -67,6 +94,7 @@ def main():
         result = call_api(coor[0], coor[1])
         address = get_address(result)
         print(address)
+        #sql_insert_address()
 
 
 if __name__ == '__main__':
