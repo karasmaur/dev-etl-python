@@ -25,7 +25,7 @@ def sql_insert_address(lat, long, numero, rua, bairro, cidade, cep, estado, pais
         latitude = ?, longitude = ?, rua = ?, numero = ?, bairro = ?, cidade = ?, cep = ?,  estado = ?, pais = ?, 
         endereco_completo = ?;""".format(lat, long, rua, numero, bairro, cidade, cep, estado, pais, endereco)
 
-        c.execute()
+        c.execute(sql)
         connection.commit()
 
     except Exception as e:
@@ -35,6 +35,7 @@ def sql_insert_address(lat, long, numero, rua, bairro, cidade, cep, estado, pais
 def call_api(lat, long):
     url = "https://maps.googleapis.com/maps/api/geocode/json?latlng={0},{1}&key={2}".format(lat, long, key)
     response = requests.get(url)
+    #print(url)
     content = response.content.decode("utf-8")
     return get_json(content)
 
@@ -44,16 +45,33 @@ def get_json(content):
     return js
 
 
+def get_json_api_exceeded(file):
+    js = json.load(open(file))
+    return js
+
+
 def get_address(jason_data):
-    address = []  # make this a dict
-    for i in range(7):
-        try:
-            address.append(jason_data["results"][0]["address_components"][i]["long_name"])
-        except:
-            address.append(None)
-    address.append(jason_data["results"][0]["formatted_address"])
-    # 4 is the same as 3
-    return address
+    address_dict = {"rua":"", "numero":"", "bairro":"", "cidade":"", "estado":"", "pais":"", "cep":"", "endereco_completo":""}
+
+    for i in jason_data["results"][0]["address_components"]:
+        if i["types"] == ["route"]:
+            address_dict["rua"] = i["long_name"]
+        elif i["types"] == ["street_number"]:
+            address_dict["numero"] = i["long_name"]
+        elif i["types"] == ['political', 'sublocality', 'sublocality_level_1']:
+            address_dict["bairro"] = i["long_name"]
+        elif i["types"] == ['administrative_area_level_2', 'political']:
+            address_dict["cidade"] = i["long_name"]
+        elif i["types"] == ['administrative_area_level_1', 'political']:
+            address_dict["estado"] = i["long_name"]
+        elif i["types"] == ['country', 'political']:
+            address_dict["pais"] = i["long_name"]
+        elif i["types"] == ['postal_code', 'postal_code_prefix']:
+            address_dict["cep"] = i["long_name"]
+
+    address_dict["endereco_completo"] = jason_data["results"][0]["formatted_address"]
+
+    return address_dict
 
 
 coordinates_regex = re.compile(r'^(?:Latitude|Longitude).+(?:S|W)\s\s\s([0-9\.\-]+)$')
@@ -87,14 +105,20 @@ def get_coordinates(directory):
 def main():
 
     create_table()
-
+    '''
     coordinates_list = get_coordinates(data_dir)
-
+    
     for coor in coordinates_list:
         result = call_api(coor[0], coor[1])
         address = get_address(result)
         print(address)
-        #sql_insert_address()
+
+        #sql_insert_address(coor[0])
+    '''
+    result = get_json_api_exceeded("test.json")
+
+    address = get_address(result)
+
 
 
 if __name__ == '__main__':
