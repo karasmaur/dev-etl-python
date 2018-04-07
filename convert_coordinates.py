@@ -7,7 +7,6 @@ import sqlite3
 connection = sqlite3.connect('enderecos.db')
 c = connection.cursor()
 
-data_dir = "/Users/mauricio.karas/PycharmProjects/coordinates/data_points"
 key = "AIzaSyBYMwq_MqG3aNIjbZvGU4-eBnDu7wD69Xo"
 
 
@@ -21,9 +20,10 @@ def create_table():
 
 def sql_insert_address(lat, long, numero, rua, bairro, cidade, cep, estado, pais, endereco):
     try:
-        sql = """UPDATE enderecos SET 
-        latitude = ?, longitude = ?, rua = ?, numero = ?, bairro = ?, cidade = ?, cep = ?,  estado = ?, pais = ?, 
-        endereco_completo = ?;""".format(lat, long, rua, numero, bairro, cidade, cep, estado, pais, endereco)
+        sql = """INSERT INTO enderecos 
+                (latitude, longitude, rua, numero, bairro, cidade, cep, estado, pais, endereco_completo) 
+                VALUES ("{}", "{}", "{}", "{}", "{}", 
+                "{}", "{}", "{}", "{}", "{}");""".format(lat, long, rua, numero, bairro, cidade, cep, estado, pais, endereco)
 
         c.execute(sql)
         connection.commit()
@@ -35,7 +35,6 @@ def sql_insert_address(lat, long, numero, rua, bairro, cidade, cep, estado, pais
 def call_api(lat, long):
     url = "https://maps.googleapis.com/maps/api/geocode/json?latlng={0},{1}&key={2}".format(lat, long, key)
     response = requests.get(url)
-    #print(url)
     content = response.content.decode("utf-8")
     return get_json(content)
 
@@ -51,8 +50,10 @@ def get_json_api_exceeded(file):
 
 
 def get_address(jason_data):
-    address_dict = {"rua":"", "numero":"", "bairro":"", "cidade":"", "estado":"", "pais":"", "cep":"", "endereco_completo":""}
+    address_dict = {"rua": "", "numero": "", "bairro": "", "cidade": "", "estado": "",
+                    "pais": "", "cep": "", "endereco_completo": ""}
 
+    #  This is the API json result mapping:
     for i in jason_data["results"][0]["address_components"]:
         if i["types"] == ["route"]:
             address_dict["rua"] = i["long_name"]
@@ -81,7 +82,7 @@ def get_latlong_from_line(coor):
         coordinates_number = match.group(1)
         return coordinates_number
     else:
-        return "Not valid"  # CHANGE THIS
+        return "Not valid"  # TODO: CHANGE THIS
 
 
 def get_coordinates(directory):
@@ -102,23 +103,33 @@ def get_coordinates(directory):
     return coordinates_list
 
 
+data_dir = "/Users/mauricio.karas/PycharmProjects/coordinates/data_points"
+
+
 def main():
 
     create_table()
-    '''
+
     coordinates_list = get_coordinates(data_dir)
     
-    for coor in coordinates_list:
-        result = call_api(coor[0], coor[1])
+    for coordinate in coordinates_list:
+        result = call_api(coordinate[0], coordinate[1])
         address = get_address(result)
-        print(address)
+        sql_insert_address(coordinate[0], coordinate[1], address["numero"], address["rua"], address["bairro"],
+                       address["cidade"], address["cep"], address["estado"], address["pais"],
+                       address["endereco_completo"])
+        
 
-        #sql_insert_address(coor[0])
     '''
+    This is for testing when the API call limit is exceeded.
     result = get_json_api_exceeded("test.json")
 
     address = get_address(result)
 
+    sql_insert_address("0", "0", address["numero"], address["rua"], address["bairro"],
+                       address["cidade"], address["cep"], address["estado"], address["pais"],
+                       address["endereco_completo"])
+    '''
 
 
 if __name__ == '__main__':
