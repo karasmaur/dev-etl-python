@@ -132,7 +132,13 @@ def main():
     total = len(coordinates_list)+1
     
     for index, coordinate in enumerate(coordinates_list):
+
         result = call_api(coordinate[0], coordinate[1])
+
+        if list(result.keys())[0] == "error_message":
+            print(result["error_message"])
+            break
+
         address = get_address(result)
         sql_insert_address(coordinate[0], coordinate[1], address["numero"], address["rua"], address["bairro"],
                        address["cidade"], address["cep"], address["estado"], address["pais"],
