@@ -1,0 +1,5 @@
+Bônus:
+
+Utilizando somente os endereços, nesse caso só de Porto Alegre, poderia ser feito um agrupamento por bairro para obter um mapa de calor da cidade, podendo mostrar a concentração de pessoas em cada região.
+
+Se esses dados forem ligados a outras informações como o horário em que a coordenada foi marcada, seria possível construir rotas que foram feitas em determinados dias. Poderia ser determinado onde uma pessoa mora, sabendo que a noite a coordenada se mantém igual por horas, onde a pessoa almoça, quais locais ela visita no final de semana.
