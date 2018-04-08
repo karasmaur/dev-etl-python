@@ -10,7 +10,6 @@ c = connection.cursor()
 key = "AIzaSyBYMwq_MqG3aNIjbZvGU4-eBnDu7wD69Xo"
 
 
-# latitude	longitude	rua	numero	bairro	cidade	cep	estado	pais endereço
 def create_table():
     c.execute(
         """CREATE TABLE IF NOT EXISTS enderecos
@@ -67,7 +66,7 @@ def get_address(jason_data):
             address_dict["estado"] = i["long_name"]
         elif i["types"] == ['country', 'political']:
             address_dict["pais"] = i["long_name"]
-        elif i["types"] == ['postal_code', 'postal_code_prefix']:
+        elif i["types"] == ['postal_code', 'postal_code_prefix'] or i["types"] == ['postal_code']:
             address_dict["cep"] = i["long_name"]
 
     address_dict["endereco_completo"] = jason_data["results"][0]["formatted_address"]
