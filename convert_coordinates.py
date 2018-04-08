@@ -4,10 +4,12 @@ import re
 import json
 import sqlite3
 
-connection = sqlite3.connect('enderecos.db')
+connection = sqlite3.connect('enderecos2.db')
 c = connection.cursor()
+sql_transaction = []
 
-key = "AIzaSyBYMwq_MqG3aNIjbZvGU4-eBnDu7wD69Xo"
+
+key = "AIzaSyCO0FMQRjoiN1z0Xkoo3gPoq1iQyFKx3aE"
 
 
 def create_table():
@@ -19,16 +21,31 @@ def create_table():
 
 def sql_insert_address(lat, long, numero, rua, bairro, cidade, cep, estado, pais, endereco):
     try:
-        sql = """INSERT INTO enderecos 
+        sql = """INSERT INTO enderecos
                 (latitude, longitude, rua, numero, bairro, cidade, cep, estado, pais, endereco_completo) 
                 VALUES ("{}", "{}", "{}", "{}", "{}", 
                 "{}", "{}", "{}", "{}", "{}");""".format(lat, long, rua, numero, bairro, cidade, cep, estado, pais, endereco)
 
+        #transaction_builder(sql)
         c.execute(sql)
         connection.commit()
 
     except Exception as e:
         print('Erro insert: ', str(e))
+
+
+def transaction_builder(sql):
+    global sql_transaction
+    sql_transaction.append(sql)
+    if len(sql_transaction) > 200:
+        c.execute('BEGIN TRANSACTION')
+        for s in sql_transaction:
+            try:
+                c.execute(s)
+            except:
+                pass
+        connection.commit()
+        sql_transaction = []
 
 
 def call_api(lat, long):
@@ -51,25 +68,29 @@ def get_json_api_exceeded(file):
 def get_address(jason_data):
     address_dict = {"rua": "", "numero": "", "bairro": "", "cidade": "", "estado": "",
                     "pais": "", "cep": "", "endereco_completo": ""}
+    try:
+        #  This is the API json result mapping:
+        for i in jason_data["results"][0]["address_components"]:
+            if i["types"] == ["route"]:
+                address_dict["rua"] = i["long_name"]
+            elif i["types"] == ["street_number"]:
+                address_dict["numero"] = i["long_name"]
+            elif i["types"] == ['political', 'sublocality', 'sublocality_level_1']:
+                address_dict["bairro"] = i["long_name"]
+            elif i["types"] == ['administrative_area_level_2', 'political']:
+                address_dict["cidade"] = i["long_name"]
+            elif i["types"] == ['administrative_area_level_1', 'political']:
+                address_dict["estado"] = i["long_name"]
+            elif i["types"] == ['country', 'political']:
+                address_dict["pais"] = i["long_name"]
+            elif i["types"] == ['postal_code', 'postal_code_prefix'] or i["types"] == ['postal_code']:
+                address_dict["cep"] = i["long_name"]
 
-    #  This is the API json result mapping:
-    for i in jason_data["results"][0]["address_components"]:
-        if i["types"] == ["route"]:
-            address_dict["rua"] = i["long_name"]
-        elif i["types"] == ["street_number"]:
-            address_dict["numero"] = i["long_name"]
-        elif i["types"] == ['political', 'sublocality', 'sublocality_level_1']:
-            address_dict["bairro"] = i["long_name"]
-        elif i["types"] == ['administrative_area_level_2', 'political']:
-            address_dict["cidade"] = i["long_name"]
-        elif i["types"] == ['administrative_area_level_1', 'political']:
-            address_dict["estado"] = i["long_name"]
-        elif i["types"] == ['country', 'political']:
-            address_dict["pais"] = i["long_name"]
-        elif i["types"] == ['postal_code', 'postal_code_prefix'] or i["types"] == ['postal_code']:
-            address_dict["cep"] = i["long_name"]
-
-    address_dict["endereco_completo"] = jason_data["results"][0]["formatted_address"]
+        address_dict["endereco_completo"] = jason_data["results"][0]["formatted_address"]
+    except Exception as e:
+        print("Error in the following JSON result:")
+        print(jason_data)
+        print("Error: ", e)
 
     return address_dict
 
@@ -80,8 +101,6 @@ def get_latlong_from_line(coor):
     if match:
         coordinates_number = match.group(1)
         return coordinates_number
-    else:
-        return "Not valid"  # TODO: CHANGE THIS
 
 
 def get_coordinates(directory):
@@ -110,26 +129,16 @@ def main():
     create_table()
 
     coordinates_list = get_coordinates(data_dir)
+    total = len(coordinates_list)+1
     
-    for coordinate in coordinates_list:
+    for index, coordinate in enumerate(coordinates_list):
         result = call_api(coordinate[0], coordinate[1])
         address = get_address(result)
         sql_insert_address(coordinate[0], coordinate[1], address["numero"], address["rua"], address["bairro"],
                        address["cidade"], address["cep"], address["estado"], address["pais"],
                        address["endereco_completo"])
         
-
-    '''
-    This is for testing when the API call limit is exceeded.
-    result = get_json_api_exceeded("test.json")
-
-    address = get_address(result)
-
-    sql_insert_address("0", "0", address["numero"], address["rua"], address["bairro"],
-                       address["cidade"], address["cep"], address["estado"], address["pais"],
-                       address["endereco_completo"])
-    '''
-
+        print(str(index+1)+"/"+str(total), str(round(((index+1)/(total)*100), 2)) + "%", end='\r')
 
 if __name__ == '__main__':
     main()
